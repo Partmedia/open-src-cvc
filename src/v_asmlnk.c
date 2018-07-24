@@ -186,7 +186,6 @@ OF SUCH DAMAGE.
 #include <sched.h>
 // SJM 05-30-13 - valut 4x does not support this include
 #ifndef __RHEL4X__
-#include <linux/sched.h>
 #endif
 
 /* AIV 03/28/12 - this is needed for some systems for clone call */
