@@ -10539,8 +10539,7 @@ static void prt_1bblk_cvc_stats(struct flowg_t *fgp, struct bblk_t *bbp)
  */
 static FILE *do_popen(char *cmd, char *rw)
 {
- if (__my_popen) return(my_popen());
- else return(popen(cmd, rw));
+ return(popen(cmd, rw));
 }
 
 /*
@@ -10548,67 +10547,10 @@ static FILE *do_popen(char *cmd, char *rw)
  */
 static void do_pclose(FILE *pp)
 {
- if (__my_popen) my_pclose(pp);
- else pclose(pp);
+ pclose(pp);
 }
 
 #define POPEN_STACK_SIZE 64*1024
-/*
- * do faster popen which uses lighter weight clone call
- * normal popen copies some memory so for large designs which use lots of
- * memory popens can run slow
- */
-static FILE *my_popen(void) 
-{
- pid_t pid;
- void *stack, *stack_aligned;
- FILE *fp;
-#ifndef __CVC32__
- size_t tmp;
-#endif
-
- /* 0 read 1 write  */
- if (pipe(__asm_pipefd) != 0) return(NULL);
-
- /* alloc stack to run thread */
- stack = __my_malloc(POPEN_STACK_SIZE);
- __asm_stack = stack;
-
- /* align stack on 16 bytes */
- stack_aligned = stack+POPEN_STACK_SIZE/sizeof(void **);
-
-#ifndef __CVC32__
- /* DBG remove -- */
- tmp = (size_t) stack_aligned;
- if ((tmp % 16) != 0) __misc_terr(__FILE__, __LINE__);
- /* ---- */
-#endif
-
- /* DBG remove --
- __cv_msg("parent pid=%d\n", getpid());
- -- */
- pid = clone(popen_child_process_func, stack_aligned, 
-        CLONE_VM|SIGCHLD|CLONE_VFORK, NULL);
- if (pid <= 0) return(NULL);
-
- /* DBG remove -- */
- //__cv_msg("pid=%d\n", pid);
- /* ---- */
- /* parent process */
- __asm_pid = pid;
-
- /* not reading */
- if (close(__asm_pipefd[0]) != 0) 
-   return(NULL);
-
- /* write */
- fp = fdopen(__asm_pipefd[1], "w");
-
- if (fp == NULL) return(NULL); 
-
- return(fp);
-}
-
 /*
  * close unused pipes and call exec to assembler
  */
